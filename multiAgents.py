@@ -74,14 +74,16 @@ class ReflexAgent(Agent):
         newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
 
         "*** YOUR CODE HERE ***"
-        value = successorGameState.getScore() # score of next position
-        distanceToFirstGhost = manhattanDistance(newPos, newGhostStates[0].getPosition()) #distance from pacman to first ghost
+        value = successorGameState.getScore() 
 
-        if distanceToFirstGhost > 0 :
-          value -= 10/distanceToFirstGhost
-        distanceToFood = [manhattanDistance(newPos,x) for x in newPos.asList()]
-        if len(distanceToFood):
-          value += 10/ min(distanceToFood))
+        distanceToFirstGhost = manhattanDistance(newPos, newGhostStates[0].getPosition()) 
+        if distanceToFirstGhost > 0:
+            value -= 10.0 / distanceToFirstGhost
+
+        distancesToFood = [manhattanDistance(newPos, x) for x in newFood.asList()]
+        if len(distancesToFood):
+            value += 10.0 / min(distancesToFood)
+
         return value
 
 def scoreEvaluationFunction(currentGameState):
@@ -240,22 +242,78 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
     def getAction(self, gameState):
         """
           Returns the expectimax action using self.depth and self.evaluationFunction
-
           All ghosts should be modeled as choosing uniformly at random from their
           legal moves.
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+
+        def expectimaxSearch(state, agentIndex, depth):
+            # Neu la ghost cuoi dung
+            if agentIndex == state.getNumAgents():
+              # neu la max depth
+              if depth == self.depth:
+                return self.evaluationFunction(state)
+              # tao max layer voi depth = depth + 1
+              else:
+                return expectimaxSearch(state, 0, depth + 1)
+            else:
+              moves = state.getLegalActions(agentIndex)
+              if len(moves) == 0:
+                return self.evaluationFunction(state)
+              next = [expectimaxSearch(state.generateSuccessor(agentIndex, move), agentIndex + 1, depth) for move in moves]
+
+              if agentIndex == 0:
+                return max(next)
+              else:
+                # khong dung min nua ma dung avg
+                return sum(next) / len(next)
+
+        result = max(gameState.getLegalActions(0),
+                     key=lambda x: expectimaxSearch(gameState.generateSuccessor(0, x), 1, 1))
+
+        return result
+        # util.raiseNotDefined()
 
 def betterEvaluationFunction(currentGameState):
     """
       Your extreme ghost-hunting, pellet-nabbing, food-gobbling, unstoppable
       evaluation function (question 5).
-
       DESCRIPTION: <write something here so we know what you did>
     """
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    newPos = currentGameState.getPacmanPosition()
+    newFood = currentGameState.getFood()
+    newGhostStates = currentGameState.getGhostStates()
+    newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
+    newCapsules = currentGameState.getCapsules()
+
+    ghostDistance = 0
+    capsuleScore = 0
+    if len(currentGameState.getCapsules()) != 0:
+        closestCapsule = min([manhattanDistance(capsule, newPos) for capsule in currentGameState.getCapsules()]) 
+        capsuleScore += 200 / closestCapsule
+
+    closestghost = min([manhattanDistance(newPos, ghost.getPosition()) for ghost in newGhostStates]) 
+    foodList = newFood.asList()
+    if len(foodList) != 0:
+        closestfood = min([manhattanDistance(newPos, food) for food in foodList])
+    else:
+        closestfood = 0
+
+    if (ghost.scaredTimer != 0):
+        capsuleScore = -300
+        if closestghost <= 1:
+            ghostDistance += 350
+        else:
+            ghostDistance = 250 / closestghost
+        score = (-1.3 * closestfood) + ghostDistance - (3 * len(foodList)) + capsuleScore
+    else:
+        if closestghost <= 1:
+            ghostDistance -= 1000
+        else:
+            ghostDistance = - 13 / closestghost
+        score = (-1.3 * closestfood) + ghostDistance - (95 * len(foodList)) + capsuleScore
+    return score
 
 # Abbreviation
 better = betterEvaluationFunction
